@@ -6,24 +6,20 @@ import os, math
 #   https://openapi.futunn.com/futu-api-doc/trade/overview.html
 
 ############################ CONFIG ############################
-FUTUOPEND_ADDRESS = '127.0.0.1'
+FUTUOPEND_ADDR = '127.0.0.1'
 FUTUOPEND_PORT = 11111
 
 TRADING_ENVIRONMENT = TrdEnv.REAL # TrdEnv.SIMULATE
 TRADING_MARKET = TrdMarket.HK
-TRADING_PWD = os.getenv('FUTU_TRADING_PSWD')
-if TRADING_PWD == None:
-    print('No FUTU_TRADING_PSWD set in ENV')
-EXAMPLE_CODE = 'HK.00700'
 
-quote_context = OpenQuoteContext(host=FUTUOPEND_ADDRESS, port=FUTUOPEND_PORT)
-trade_context = OpenSecTradeContext(filter_trdmarket=TRADING_MARKET, host=FUTUOPEND_ADDRESS, port=FUTUOPEND_PORT, security_firm=SecurityFirm.FUTUSECURITIES)
+quote_context = OpenQuoteContext(host=FUTUOPEND_ADDR, port=FUTUOPEND_PORT)
+trade_context = OpenSecTradeContext(filter_trdmarket=TRADING_MARKET, host=FUTUOPEND_ADDR, port=FUTUOPEND_PORT, security_firm=SecurityFirm.FUTUSECURITIES)
 
 def _print_data_table(data):
     print(data)
     for key in data:
         col = data[key].values.tolist()
-        if col == ['N/A'] or data[key].isnull().values.all():
+        if col == ['N/A'] or col == [0.0] or data[key].isnull().values.all():
             continue
         print("\t", key, col)
 
@@ -42,8 +38,12 @@ def list_accounts():
         return None
 
 def unlock_trade():
+    pswd = os.getenv('FUTU_TRADING_PSWD')
+    if pswd == None:
+        print('No FUTU_TRADING_PSWD set in ENV')
+        return False
     if TRADING_ENVIRONMENT == TrdEnv.REAL:
-        ret, data = trade_context.unlock_trade(TRADING_PWD)
+        ret, data = trade_context.unlock_trade(pswd)
         if ret != RET_OK:
             print('<-- failed in unlock_trade()', data)
             return False
@@ -54,7 +54,7 @@ def account_info():
     ret, data = trade_context.accinfo_query()
     if ret == RET_OK:
         print("<-- Account info")
-        print(data)
+        _print_data_table(data)
         return data
     else:
         print('<-- accinfo_query error: ', data)
@@ -149,6 +149,7 @@ def on_init():
     print('************ ON_INIT ***********')
     return True
 
+EXAMPLE_CODE = 'HK.00700'
 if __name__ == '__main__':
     if not on_init():
         print('Failed in on_init()')
@@ -157,5 +158,5 @@ if __name__ == '__main__':
     print('Do something here')
     list_accounts()
     price_step(EXAMPLE_CODE)
-    account_info()
     list_position()
+    account_info()
