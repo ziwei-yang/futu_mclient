@@ -1,7 +1,9 @@
 from futu import *
-import os
+import os, math
 
-# Reference: https://openapi.futunn.com/futu-api-doc/quick/strategy-sample.html
+# Reference:
+#   https://openapi.futunn.com/futu-api-doc/quick/strategy-sample.html
+#   https://openapi.futunn.com/futu-api-doc/trade/overview.html
 
 ############################ CONFIG ############################
 FUTUOPEND_ADDRESS = '127.0.0.1'
@@ -17,13 +19,72 @@ EXAMPLE_CODE = 'HK.00700'
 quote_context = OpenQuoteContext(host=FUTUOPEND_ADDRESS, port=FUTUOPEND_PORT)
 trade_context = OpenSecTradeContext(filter_trdmarket=TRADING_MARKET, host=FUTUOPEND_ADDRESS, port=FUTUOPEND_PORT, security_firm=SecurityFirm.FUTUSECURITIES)
 
+def _print_data_table(data):
+    print(data)
+    for key in data:
+        col = data[key].values.tolist()
+        if col == ['N/A'] or data[key].isnull().values.all():
+            continue
+        print("\t", key, col)
+
+######## Accounts ########
+
+def list_accounts():
+    ret, data = trade_context.get_acc_list()
+    if ret == RET_OK:
+        print("<-- Account list")
+        _print_data_table(data)
+        print(data['acc_id'].values.tolist())
+        # First accout should be REAL trade account
+        return data['acc_id'].values.tolist()
+    else:
+        print('<-- get_acc_list error: ', data)
+        return None
+
 def unlock_trade():
     if TRADING_ENVIRONMENT == TrdEnv.REAL:
         ret, data = trade_context.unlock_trade(TRADING_PWD)
         if ret != RET_OK:
-            print('failed in unlock_trade()', data)
+            print('<-- failed in unlock_trade()', data)
             return False
+        print("<-- Trade unlocked")
     return True
+
+def account_info():
+    ret, data = trade_context.accinfo_query()
+    if ret == RET_OK:
+        print("<-- Account info")
+        print(data)
+        return data
+    else:
+        print('<-- accinfo_query error: ', data)
+        return None
+
+def list_position():
+    ret, data = trade_context.position_list_query()
+    if ret == RET_OK:
+        print("<-- Position list")
+        _print_data_table(data)
+        return data
+    else:
+        print('<-- position_list_query error: ', data)
+        return None
+
+######## Trading & Rules ########
+
+def price_step(code):
+    open_quantity = 0
+    ret, data = quote_context.get_market_snapshot([code])
+    if ret != RET_OK:
+        print('<-- Failed in getting market snapshot', data)
+    print('<-- Trading rule & market snapshot', code)
+    _print_data_table(data)
+    qty_step = data['lot_size'][0]
+    price_step = data['price_spread'][0]
+    print("<--", code, 'qty', qty_step, 'price_step', price_step)
+    return qty_step, price_step
+
+######## Untest below ########
 
 def get_holding_position(code):
     holding_position = 0
@@ -44,18 +105,29 @@ def get_ask_and_bid(code):
         return None, None
     return data['Ask'][0][0], data['Bid'][0][0]
 
-def price_step(code):
-    open_quantity = 0
-    ret, data = quote_context.get_market_snapshot([code])
+def is_valid_quantity(code, quantity, price):
+    ret, data = trade_context.acctradinginfo_query(
+            order_type=OrderType.NORMAL, code=code, price=price,
+            trd_env=TRADING_ENVIRONMENT)
     if ret != RET_OK:
-        print('Failed in getting market snapshot', data)
-    # print('Trading rule', code, data)
-    # for key in data:
-    #    print("\t", key, data[key])
-    # lot_size -> price_step
-    ret = data['lot_size'][0]
-    print("\t price_step", code, ret)
-    return ret
+        print('Failed in getting valid qty', code, data)
+        return False
+    max_can_buy = data['max_cash_buy'][0]
+    max_can_sell = data['max_sell_short'][0]
+    if quantity > 0:
+        return quantity < max_can_buy
+    elif quantity < 0:
+        return abs(quantity) < max_can_sell
+    return false
+
+def show_order_status(data):
+    order_status = data['order_status'][0]
+    order_info = dict()
+    order_info['code'] = data['code'][0]
+    order_info['price'] = data['price'][0]
+    order_info['side'] = data['trd_side'][0]
+    order_info['qty'] = data['qty'][0]
+    print('status', order_status, order_info)
 
 def test_buy_trade(code):
     ask, bid = get_ask_and_bid(code)
@@ -83,4 +155,7 @@ if __name__ == '__main__':
         quote_context.close()
         trade_context.close()
     print('Do something here')
+    list_accounts()
     price_step(EXAMPLE_CODE)
+    account_info()
+    list_position()
