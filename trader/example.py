@@ -72,6 +72,26 @@ def list_position():
 
 ######## Trading & Rules ########
 
+def is_normal_trading_time(code):
+    ret, data = quote_context.get_market_state([code])
+    if ret != RET_OK:
+        print('<-- get_market_state error', data)
+        return False
+    market_state = data['market_state'][0]
+    # MarketState.MORNING            港、A 股早盘
+    # MarketState.AFTERNOON          港、A 股下午盘，美股全天
+    # MarketState.FUTURE_DAY_OPEN    港、新、日期货日市开盘
+    # MarketState.FUTURE_OPEN        美期货开盘
+    # MarketState.NIGHT_OPEN         港、新、日期货夜市开盘
+    if market_state == MarketState.MORNING or \
+            market_state == MarketState.AFTERNOON or \
+            market_state == MarketState.FUTURE_DAY_OPEN  or \
+            market_state == MarketState.FUTURE_OPEN  or \
+            market_state == MarketState.NIGHT_OPEN:
+        return True
+    print('<-- Not trading market now.', market_state)
+    return False
+
 def trading_rules(code_list):
     open_quantity = 0
     ret, data = quote_context.get_market_snapshot(code_list)
@@ -172,7 +192,8 @@ if __name__ == '__main__':
         trade_context.close()
     print('Do something here')
     list_accounts()
-    price_step(EXAMPLE_CODE)
+    trading_rules(EXAMPLE_CODE)
     list_position()
     account_info()
     recent_orders()
+    is_normal_trading_time(EXAMPLE_CODE)
