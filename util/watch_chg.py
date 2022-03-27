@@ -21,6 +21,20 @@ def _print_data_table(data):
             continue
         print("\t", key, col)
 
+class TradeOrderEventPrinter(TradeOrderHandlerBase):
+     def on_recv_rsp(self, rsp_pb): # order update push
+         ret, content = super(TradeOrderEventPrinter, self).on_recv_rsp(rsp_pb)
+         if ret == RET_OK:
+             print("<-- TradeOrderEventPrinter\n{}".format(content))
+         return ret, content
+
+class TradeDealEventPrinter(TradeDealHandlerBase):
+     def on_recv_rsp(self, rsp_pb): # order match update push
+         ret, content = super(TradeDealEventPrinter, self).on_recv_rsp(rsp_pb)
+         if ret == RET_OK:
+             print("<-- TradeDealEventPrinter\n{}".format(content))
+         return ret, content
+
 def watch_chg(trade_context_list=None, on_chg_cb=None):
     # Init trade_context_list as HK market only.
     if trade_context_list is None:
@@ -28,6 +42,7 @@ def watch_chg(trade_context_list=None, on_chg_cb=None):
     account_info_cache = []
     position_cache = []
     for ctx in trade_context_list:
+        ctx.set_handler(TradeOrderEventPrinter()) # Recv order events.
         account_info_cache.append(None)
         position_cache.append(None)
 

@@ -19,7 +19,6 @@ def _print_data_table(data):
         print("\t", key, col)
 
 def trading_rules(code_list):
-    open_quantity = 0
     ret, data = quote_context.get_market_snapshot(code_list)
     if ret != RET_OK:
         print('<-- Failed in getting market snapshot', data)
@@ -52,7 +51,7 @@ def market_sell(code, qty):
     print("Will market sell", code, qty)
     input("Enter to start")
     ret, data = trade_context.place_order(
-            99999, # Does not matter in MKT_ORDER
+            99999, # Price does not matter in MKT_ORDER
             qty, code, TrdSide.SELL,
             order_type=OrderType.MARKET,
             trd_env=TrdEnv.REAL
@@ -81,7 +80,7 @@ def liquidate_all(code_list):
                 if sell_qty > 0:
                     market_sell(row['code'], qty)
     # util/watch_chg.py
-    watch_chg(on_chg_cb=pos_changed)
+    watch_chg(trade_context_list=[trade_context], on_chg_cb=pos_changed)
 
 if __name__ == '__main__':
     liquidate_all(['HK.09618'])
