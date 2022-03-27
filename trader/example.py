@@ -72,17 +72,32 @@ def list_position():
 
 ######## Trading & Rules ########
 
-def price_step(code):
+def trading_rules(code_list):
     open_quantity = 0
-    ret, data = quote_context.get_market_snapshot([code])
+    ret, data = quote_context.get_market_snapshot(code_list)
     if ret != RET_OK:
         print('<-- Failed in getting market snapshot', data)
-    print('<-- Trading rule & market snapshot', code)
-    _print_data_table(data)
-    qty_step = data['lot_size'][0]
-    price_step = data['price_spread'][0]
-    print("<--", code, 'qty', qty_step, 'price_step', price_step)
-    return qty_step, price_step
+    print('<-- Trading rule & market snapshot', code_list)
+    # _print_data_table(data)
+    qty_step_map = {}
+    price_step_map = {}
+    for idx, row in data.iterrows():
+        code = row['code']
+        qty_step = row['lot_size']
+        price_step = row['price_spread']
+        print("<--", code, 'qty', qty_step, 'price_step', price_step)
+        qty_step_map[code] = qty_step
+        price_step_map[code] = price_step
+    return qty_step_map, price_step_map
+
+def recent_orders():
+    ret, data = trade_context.history_order_list_query()
+    if ret == RET_OK:
+        print(data)
+        return data
+    else:
+        print('history_order_list_query error: ', data)
+        return None
 
 ######## Untest below ########
 
@@ -149,7 +164,7 @@ def on_init():
     print('************ ON_INIT ***********')
     return True
 
-EXAMPLE_CODE = 'HK.00700'
+EXAMPLE_CODE = 'HK.09618'
 if __name__ == '__main__':
     if not on_init():
         print('Failed in on_init()')
@@ -160,3 +175,4 @@ if __name__ == '__main__':
     price_step(EXAMPLE_CODE)
     list_position()
     account_info()
+    recent_orders()
