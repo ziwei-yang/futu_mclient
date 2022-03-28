@@ -193,7 +193,7 @@ if __name__ == '__main__':
     print('Do something here')
     list_accounts()
     trading_rules(EXAMPLE_CODE)
-    list_position()
     account_info()
     recent_orders()
     is_normal_trading_time(EXAMPLE_CODE)
+    list_position()
